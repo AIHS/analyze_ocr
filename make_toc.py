@@ -14,19 +14,19 @@ VERBOSE = True
 
 # just look at 1rst n words in page when deciding whether to mark it
 # as a TOC.
-FIRSTN = 15
+FIRSTN = 30
 
 # try to guess at the situation where we've grabbed a compact
 # sequence of number that aren't pagenos - common case is
 # chapter numbers.  If first numbers are closely spaced, and
 # skipping them still gives a reasonable (different) sequence,
 # go ahead and skip them.
-less_greedy_heuristic = True
+# less_greedy_heuristic = True
 less_greedy_heuristic = False
 
 # how far across the page a number need be before it's considered a
-# pageno candidate.  (actually 0-1)
-PAGENO_X_PERCENT = .3
+# pageno candidate.
+PAGENO_X_RATIO = .3
 
 SKIP_IF_LAST_TOC_FILLED = True
 
@@ -41,8 +41,23 @@ def l(result, comment):
 def failit(tr, s):
     l(tr, s)
     tr['isok'] = False
+    tr['isok'] = True
 
-def make_toc(iabook, pages):
+
+def simple_make_toc(iabook, pages):
+    result = { 'isok': True,
+               'has_contents': True,
+               'has_pagenos': True,
+               'qdtoc': [] }
+    contentscount = iabook.get_contents_count()
+    if contentscount == 0:
+        result['has_contents'] = False
+    if not iabook.has_pagenos():
+        result['has_pagenos'] = False
+    
+
+
+def make_toc(iabook, pages, contents_leafs=None, not_contents_leafs=None):
     result = { 'isok': True,
                'has_contents': True,
                'has_pagenos': True,
@@ -56,7 +71,6 @@ def make_toc(iabook, pages):
         result['has_contents'] = False
     if not iabook.has_pagenos():
         result['has_pagenos'] = False
-    # import pdb; pdb.set_trace()
     # if (contentscount == 0
     #     or not iabook.has_pagenos()):
     #     result['failedbkno'] = 'nope'
@@ -65,7 +79,7 @@ def make_toc(iabook, pages):
 
     if not iabook.has_pagenos():
         result['failedbkno'] = 'nope'
-        failit(result, 'failed bc no pagenos or no contents page marked')
+        failit(result, 'failed bc no pagenos')
         return result
         
     # XXX formalize all this goo somehow, and use
@@ -183,6 +197,8 @@ def local_monotonic_p(seq):
             yield True
         else:
             yield False
+
+
 def promote_leading_increasing_numeric_titlewords(toc):
     for ti in toc:
         if len(ti['title'].strip()) == 0:
@@ -202,7 +218,13 @@ def promote_leading_increasing_numeric_titlewords(toc):
             if len(splits[i]) > 1:
                 ti['title'] = splits[i][1].strip()
 
+
 def cleanup_toc(toc):
+    if len(toc) > 1:
+        if (toc[0]['pagenum'] == 'i' and
+            toc[1]['pagenum'].isdigit()):
+            toc[0]['pagenum'] = '1'
+    
     for ti in toc:
         ti['title'] = re.sub(r'\s*[.\-\s_,]*\s*$', '', ti['title'])
     # promote_leading_increasing_numeric_titlewords(toc)
@@ -252,6 +274,7 @@ def check_toc(toc_result):
         prevtocpage = ti['tocpage']
     return toc_result['isok']
 
+
 labels = ('chapter', 'part', 'section', 'book',
           'preface', 'appendix', 'footnotes', 'epilog', 'epilogue'
           )
@@ -260,6 +283,8 @@ numbers = ('one', 'two', 'three', 'four', 'five',
            'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen',
            'sixteen', 'seventeen', 'eighteen', 'nineteen', 'twenty',
            )
+
+
 def guess_label(words):
     def cleanword(text):
         text = re.sub(r'[\s.:,\(\)\/;!\'\"\-]', '', text)
@@ -329,6 +354,9 @@ class RangeSet(object):
                     and r.match.b + r.match.size >= rs.match.b)):
                 yield rs
 
+
+words_so_far = []
+
 class TocCandidate(object):
     def __init__(self, page):
         self.page = page
@@ -336,6 +364,11 @@ class TocCandidate(object):
         self.wordtuples = [word for word in page.get_words()]
         self.words = [word.text for word in self.wordtuples]
         self.rawwords = [word for word in page.get_words_raw()]
+
+        # XXX MM DEBUG
+#         self.words = [word.text for word in page.get_words_raw()]
+
+
         # self.words = [word.text for word in page.get_words()]
         # print self.words
         # for i in range(4):
@@ -359,10 +392,13 @@ class TocCandidate(object):
         self.matches = IntervalSet()
         self.matchinfo = {}
         self.score = 0
+        self.adj_score = 0 # 'adjusted' score; as to boost last page in toc
         self.set_base_score()
 
 
     def set_base_score(self):
+        if self.page.info['type'] == 'contents':
+            self.score += 5
         labelcount = 1
         for i, w in enumerate(self.words):
             if w in labels:
@@ -383,6 +419,7 @@ class TocCandidate(object):
         #     info = self.matchinfo[ival]
         #     print "%s %s" % (ival, info)
         pass
+
 
     def find_nearnos(self, match):
         # XXX worry later about contained.  for now: just next and prev:
@@ -505,7 +542,7 @@ class TocCandidate(object):
             bounds = self.page.info['bounds']
         else:
             bounds = self.page.find_text_bounds()
-        xcutoff = bounds.l + (bounds.r - bounds.l) * PAGENO_X_PERCENT
+        xcutoff = bounds.l + (bounds.r - bounds.l) * PAGENO_X_RATIO
         def get_page_cands(page):
             # XXX mini stack to handle last-3 words ?
             lastword = ''
@@ -545,7 +582,6 @@ class TocCandidate(object):
 
         if filtered and less_greedy_heuristic:
             if len(page_cands) != 0:
-                # import pdb; pdb.set_trace()
                 slop = 1
                 if (len(extracted_orig) > 3
                     and extracted_orig[0].val + 2 >= extracted_orig[1].val
@@ -634,7 +670,14 @@ class TocCandidate(object):
         # for c in self.pageno_cands:
         #     valid_pages[c.word_index] = c
         # print valid_pages
-        words_so_far = []
+        
+        global words_so_far
+
+        # flush accumulated words_so_far (possible wordy chapter
+        # titles from previous pages if too short, as it's then more
+        # likely to be pagenos / noise
+        if len(words_so_far) < 4:
+            words_so_far = []
         firstword = True
         prev_word = ''
         result = []

@@ -2,14 +2,18 @@ import sys
 from iabook import *
 from windowed_iterator import windowed_iterator
 import find_pagenos
-# import find_header_footer
+import find_header_footer
 import make_toc
 import json
 
 opts = None
 
+hardcode_toc_pages = None
+# hardcode_toc_pages = range(16,18)
+hardcode_nottoc_pages = None
+# hardcode_nottoc_pages = [18]
+
 djvu = True
-# djvu = False
 pagenos = False
 hfs = False
 
@@ -19,6 +23,10 @@ def main(argv):
     parser = optparse.OptionParser(usage='usage: %prog [options]',
                                    version='%prog 0.1',
                                    description='make tocs')
+    parser.add_option('--simpletoc',
+                      action='store_true',
+                      default=False,
+                      help='do a simple toc analysis')
     parser.add_option('--human',
                       action='store_true',
                       default=False,
@@ -50,7 +58,7 @@ def main(argv):
         page.clear()
     windowed_pages = windowed_iterator(pages, 5, clear_page)
     pages = analyze(windowed_pages)
-    toc_result = make_toc.make_toc(iabook, pages)
+    toc_result = make_toc.make_toc(iabook, pages, hardcode_toc_pages, hardcode_nottoc_pages)
 
     toc_result['readable'] = print_readable(toc_result['qdtoc'])
 
@@ -68,8 +76,6 @@ def main(argv):
             print ')'
         else:
             print json.dumps(toc_result, indent=4)
-
-
     # consume(pages)
 
 
@@ -93,18 +99,11 @@ def print_readable(a):
 def print_one_per_line(a):
     print '['
     print ',\n'.join(json.dumps(el) for el in a)
-    # for el in a:
-    #     print json.dumps(el) + ','
     print ']'
-
 
 
 def filter(pages):
     for page in pages:
-        # if page.index % 1 == 0:
-        #     drawable = page.get_drawable()
-        #     page.draw_basics(drawable)
-        #     drawable.save()
         if page.scandata.findtext(scandata_ns + 'addToAccessFormats') == 'true':
             yield page
 
@@ -122,8 +121,8 @@ def annotate(pages):
         page.info['bounds'] = page.find_text_bounds()
         if pagenos:
             find_pagenos.annotate_page(page)
-        # if hfs:
-        #     find_header_footer.annotate_page(page)
+        if hfs:
+            find_header_footer.annotate_page(page)
         yield page
         page = None
 
@@ -133,8 +132,8 @@ def analyze(windowed_pages):
         if pagenos:
             find_pagenos.guess_best_pageno(page, windowed_pages,
                                            windowed_pages.window)
-        # if hfs:
-        #     find_header_footer.guess_hf(page, windowed_pages)
+        if hfs:
+            find_header_footer.guess_hf(page, windowed_pages)
         yield page
 
 
