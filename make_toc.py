@@ -71,31 +71,71 @@ def make_toc(iabook, pages, contents_leafs=None, not_contents_leafs=None):
         result['has_contents'] = False
     if not iabook.has_pagenos():
         result['has_pagenos'] = False
-    # if (contentscount == 0
-    #     or not iabook.has_pagenos()):
-    #     result['failedbkno'] = 'nope'
-    #     failit(result, 'failed bc no pagenos or no contents page marked')
-    #     return result
 
-    if not iabook.has_pagenos():
-        result['failedbkno'] = 'nope'
-        failit(result, 'failed bc no pagenos')
-        return result
-        
-    # XXX formalize all this goo somehow, and use
-    # scandata pagetype better - e.g. no contents bf title
-    # still needs formaized!
-    skipfirst = 0
-    n = 5 # XXX should be higher?
-    max_assumed_toc = 4
-    # max_assumed_toc = 1
-    n_optimistic = max_assumed_toc
+    # XXXmm these might help with speed
+
+#     if iabook.has_pagenos():
+#         result['failedbkno'] = 'nope'
+#         failit(result, 'already saw these books')
+#         return result
+
+
+#     if not iabook.has_pagenos():
+#         result['failedbkno'] = 'nope'
+#         failit(result, 'failed bc no pagenos marked')
+#         return result
+
+#     if contentscount == 0:
+#         result['failedbkno'] = 'nope'
+#         failit(result, 'failed bc no contents page marked')
+#         return result
+
+
+    # loop through all pages.  For some set of early pages, make
+    # TocCandidate objs - and compare each subsequent page to each
+    # TocCandidate created so far, subject to some rules intended to
+    # speed things up.  Accumulate TocCandidate scores / info
+
+    # XXX detect title page and only accept contents, if after?
+
     tcs = []
-    thresh = 4 # if some tc page goes above this score, then...
-    starttoc = 0 # starttoc is set to skip prev pages.
-    max_assumed_toc_len = 4
-    endtoc = sys.maxint
+    toc_threshold = 3 # if some tc page goes above this score, then...
+
+    # skip early book pages altogether
+    skip_pages_until_index = 0
+
+    # Try this many toc pages (starting at skip_pages) if none marked
+    toc_count_to_try_if_no_contents_info = 40 # 20
+
+    # Try this many toc pages if 1 is marked
+    toc_count_to_try_if_contents_info = 40 # 8
+
+    # fail if more than this many contiguous good toc pages are seen
+    # should be less than two vars above...
+    max_allowed_toc_len = 40 # 7
+
+    # these values control comparing book pages to a sliding window of
+    # already-found toc pages.  Can result in early toc candidates
+    # being 'shadowed' by spurious later ones - e.g. lists of
+    # illustration.
+    windowed_match = False
+
+    # first candidate toc page to compare subsequent pages to; this is
+    # adjusted upward as new candidate pages are found.
+    toc_window_start = 0
+
+    # at most this many toc pages are checked against current body
+    # page forward of the most recently threshold-making toc
+    toc_window_size = 1
+
+    toc_window_end = sys.maxint
+
+    # the last tocpage may be below the threshold, but is only kept if
+    # it's above this
+    trailing_tocpage_threshold = 1
+
     for page in pages:
+		# XXX remove?
         if (len(page.info['number']) == 0
             and 'pageno_guess' in page.info):
             page.info['number'] = str(page.info['pageno_guess'])
@@ -105,39 +145,74 @@ def make_toc(iabook, pages, contents_leafs=None, not_contents_leafs=None):
             and contentscount > 0
             and page.info['type'] != 'contents'):
             continue
-        if page.index < skipfirst:
+        if page.index < skip_pages_until_index:
             continue
         # l("%s: %s %s" % (page.index, page.info['number'],
         #                      page.info['type']))
-        score = 0
         good_toc_count = 0
         for i, tc in enumerate(tcs):
-            if i < starttoc:
-                continue
-            if i > endtoc:
-                continue
+            if windowed_match:
+                if i < toc_window_start:
+                    continue
+                if i > toc_window_end:
+                    continue
             tc.match_page(page)
-            if tc.score > thresh:
-                starttoc = i
-                if endtoc != sys.maxint:
-                    endtoc = starttoc + max_assumed_toc_len
+            if tc.score > toc_threshold:
+                toc_window_start = i
+                if toc_window_end < toc_window_start + toc_window_size:
+                    toc_window_end = toc_window_start + toc_window_size
 
-        # if contentscount is
-        # 0: build contents pages for first n pages - need to remember to score all
-        # 2+: bnuild contents pages exactly for designated pages
+        # append the current page as a toc candidate...
+        # if contentscount is...
+        # 0: build contents pages for first n pages
+        # 2+: build contents pages exactly for designated pages
         # 1: skip pages before 1rst contents page, build n_optimistic pages, remember to score later pages
-        if ((contentscount == 0 and len(tcs) < n)
-            or (contentscount == 1 and len(tcs) < n_optimistic)
+        if ((contentscount == 0 and len(tcs) < toc_count_to_try_if_no_contents_info)
+            or (contentscount == 1 and len(tcs) < toc_count_to_try_if_contents_info)
             or (contentscount > 1 and len(tcs) < contentscount
-                and page.info['type'] == 'contents')):
+                and page.info['type'] == 'contents')
+            or (contents_leafs and page.index in contents_leafs)):
                 tcs.append(TocCandidate(page))
-                # if True:
-                #     break
-    # for tc in tcs:
-    #     tc.printme()
+        # break early if contents_leafs is around
+        if contents_leafs and page.index - 1 in contents_leafs and not page.index in contents_leafs:
+            break
+        # support hardcode_toc_pages
+        if contents_leafs and page.index in contents_leafs:
+            tcs[-1].score = 10
+        if not_contents_leafs and page.index in not_contents_leafs:
+            tcs[-1].score = -10
+
+    # adjust tc scores to promote trailing pages
+    saw_good_score = False
+    for i, tc in enumerate(tcs):
+        tc.adj_score = tc.score
+        if not saw_good_score:
+            if tc.score > toc_threshold:
+                saw_good_score = True
+                continue
+        if (tc.score < toc_threshold and
+            tc.score > trailing_tocpage_threshold and
+            i + 1 < len(tcs) and
+            tcs[i + 1].score < toc_threshold):
+            tc.adj_score = toc_threshold
+            break
+
+    # (for qdtoc algorithm)
+    # Go through all tc candidates
+    # - append to toc struct based on matches / nearno
+    # - collect from tc: pageno cands = pageno_cands / pageno_cands_unfiltered
     all_pageno_cands = []
     for i, tc in enumerate(tcs):
-        if tc.score > thresh:
+        score = tc.score
+
+        # if tc is not last, but *next* tc is below threshold,
+        # accept if better than trailing_tocpage_threshold.
+        if i + 1 < len(tcs):
+            if (tcs[i + 1].score < toc_threshold and
+                tc.score >= trailing_tocpage_threshold):
+                score = toc_threshold
+
+        if score >= toc_threshold:
             for match in tc.matches:
                 info = tc.matchinfo[match]
                 tocitem_words = info.matchwords()
@@ -149,21 +224,26 @@ def make_toc(iabook, pages, contents_leafs=None, not_contents_leafs=None):
                                       'title':(' '.join(titlewords)).strip(), 'pagenum':pagenum,
                                       'tocpage':i
                                       })
-            # import pdb; pdb.set_trace()
             if i == 0:
                 all_pageno_cands += tc.pageno_cands
             else:
                 all_pageno_cands += tc.pageno_cands_unfiltered
+
+    # pull sorted increasing set from pageno_cands - hopefully this'll
+    # filter out chaff pagenos, as ToCs always have increasing page
+    # numbers.
     if len(all_pageno_cands) > 0:
         all_pageno_cands_f = extract_sorted(all_pageno_cands)
-        # print all_pageno_cands
+
+
+    # create qdtoc:
+    # loop through toc candidates and append qdtoc from each.
     most_recent_toc = 0
-    # import pdb; pdb.set_trace()
     for i, tc in enumerate(tcs):
         l(result, '%s %s' % (tc.page.index, tc.score))
-        if tc.score > thresh:
+        if tc.score > toc_threshold:
             good_toc_count += 1
-            if good_toc_count >= max_assumed_toc_len:
+            if good_toc_count >= max_allowed_toc_len:
                 failit(result, 'failed due to too many toc pages')
                 return result
             if most_recent_toc != 0:
@@ -678,6 +758,7 @@ class TocCandidate(object):
         # likely to be pagenos / noise
         if len(words_so_far) < 4:
             words_so_far = []
+#        words_so_far = []
         firstword = True
         prev_word = ''
         result = []
