@@ -188,12 +188,12 @@ class Box(namedtuple('Box', 'l b r t')):
     def scale(self, factor):
         return Box(float(self.l) / factor, float(self.b) / factor,
                    float(self.r) / factor, float(self.t) / factor)
-
+    def tostring(self):
+        return '%s %s %s %s' % (self.l, self.b, self.r, self.t)
     # def findcenter(self):
     #     return (float(self.l) + (float(self.r) - float(self.l)) / 2,
     #             float(self.t) - (float(self.b) - float(self.t)) / 2)
 
-# Box = namedtuple('Box', 'l b r t')
 Word = namedtuple('Word', 'text box index')
 Line = namedtuple('Line', 'lineno get_words')
 class abspage(object):
