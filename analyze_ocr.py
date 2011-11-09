@@ -5,6 +5,7 @@ import find_pagenos
 import find_header_footer
 import make_toc
 import json
+import toc_to_xml
 
 opts = None
 
@@ -58,11 +59,18 @@ def main(argv):
         page.clear()
     windowed_pages = windowed_iterator(pages, 5, clear_page)
     pages = analyze(windowed_pages)
-    toc_result = make_toc.make_toc(iabook, pages, hardcode_toc_pages, hardcode_nottoc_pages)
 
-    toc_result['readable'] = print_readable(toc_result['qdtoc'])
+    if opts.simpletoc:
+        toc_result = make_toc.simple_make_toc(iabook, pages)
+    else:
+        toc_result = make_toc.make_toc(iabook, pages, hardcode_toc_pages, hardcode_nottoc_pages)
 
-    if opts.human:
+    # toc_result['readable'] = print_readable(toc_result['qdtoc'])
+
+    if opts.simpletoc:
+        xml = toc_to_xml.make_xml(toc_result['qdtoc_tuples'])
+        print etree.tostring(xml, pretty_print=True)
+    elif opts.human:
         for r in ('readable', 'comments', 'isok'):
             print r + ':'
             print toc_result[r]

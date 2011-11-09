@@ -48,13 +48,44 @@ def simple_make_toc(iabook, pages):
     result = { 'isok': True,
                'has_contents': True,
                'has_pagenos': True,
-               'qdtoc': [] }
+               'qdtoc': [],
+               'qdtoc_tuples': [],
+               }
     contentscount = iabook.get_contents_count()
     if contentscount == 0:
         result['has_contents'] = False
     if not iabook.has_pagenos():
         result['has_pagenos'] = False
-    
+        print contentscount
+    tcs = []
+    for page in pages:
+        if page.info['type'] == 'contents':
+            tcs.append(TocCandidate(page))
+            tcs[-1].score = 50
+
+    # (for qdtoc algorithm)
+    # Go through all tc candidates
+    # - append to toc struct based on matches / nearno
+    # - collect from tc: pageno cands = pageno_cands / pageno_cands_unfiltered
+    all_pageno_cands = []
+    for i, tc in enumerate(tcs):
+        if i == 0:
+            all_pageno_cands += tc.pageno_cands
+        else:
+            all_pageno_cands += tc.pageno_cands_unfiltered
+
+    # pull sorted increasing set from pageno_cands - hopefully this'll
+    # filter out chaff pagenos, as ToCs always have increasing page
+    # numbers.
+    if len(all_pageno_cands) > 0:
+        all_pageno_cands_f = extract_sorted(all_pageno_cands)
+
+    for i, tc in enumerate(tcs):
+        toc_els, tuple_toc_els = tc.get_qdtoc(all_pageno_cands_f)
+        result['qdtoc'] += toc_els
+        result['qdtoc_tuples'] = tuple_toc_els
+    result['qdtoc'] = cleanup_toc(result['qdtoc'])
+    return result
 
 
 def make_toc(iabook, pages, contents_leafs=None, not_contents_leafs=None):
@@ -251,7 +282,8 @@ def make_toc(iabook, pages, contents_leafs=None, not_contents_leafs=None):
                     failit(result, 'failed due to discontiguous tocs')
                     return result
                 most_recent_toc = i
-            result['qdtoc'] += tc.get_qdtoc(all_pageno_cands_f)
+            toc_els, tuple_toc_els = tc.get_qdtoc(all_pageno_cands_f)
+            result['qdtoc'] += toc_els
 
     result['qdtoc'] = cleanup_toc(result['qdtoc'])
     check_toc(result)
@@ -435,7 +467,10 @@ class RangeSet(object):
                 yield rs
 
 
+# Used to handle toc entries that span pages
 words_so_far = []
+# parallel version for words-with-coordinates
+wordtuples_so_far = []
 
 class TocCandidate(object):
     def __init__(self, page):
@@ -747,43 +782,41 @@ class TocCandidate(object):
         for c in all_pageno_cands:
             if c.page_index == self.page.index:
                 valid_pages[c.word_index] = c
-        # for c in self.pageno_cands:
-        #     valid_pages[c.word_index] = c
-        # print valid_pages
-        
         global words_so_far
+        global wordtuples_so_far
 
         # flush accumulated words_so_far (possible wordy chapter
-        # titles from previous pages if too short, as it's then more
+        # titles from previous pages) if too short, as it's then more
         # likely to be pagenos / noise
         if len(words_so_far) < 4:
             words_so_far = []
-#        words_so_far = []
-        firstword = True
-        prev_word = ''
+            wordtuples_so_far = []
         result = []
+        tuple_result = []
         for i, word in enumerate(self.words):
             skipwords = ('table', 'of', 'contents', 'page', 'paob', 'chap')
             illustrationwords = ('illustrations',)
             if i < 5:
                 l = word.lower()
                 if l in illustrationwords:
-                    return []
+                    return [],[]
                 if l in skipwords:
                     continue
             if i in valid_pages:
                 labelwords, titlewords = guess_label(words_so_far)
-                result.append({'level':1, 'label':(' '.join(labelwords)).strip(),
+                result.append({'level':1,
+                               'label':(' '.join(labelwords)).strip(),
                                'title':(' '.join(titlewords)).strip(), 'pagenum':word.strip(),
                                'tocpage':self.page.index
                                })
+                tuple_result.append({'level':1,
+                                     'title':wordtuples_so_far,
+                                     'pagenum':word.strip(), # self.wordtuples[i]
+                                     'tocpage':self.page.index
+                                     })
                 words_so_far = []
+                wordtuples_so_far = []
             else:
-                # t = self.wordtuples[i]
-                # print t
-                # rw = self.rawwords[t.index]
-                # words_so_far.append(rw.text)
                 words_so_far.append(self.rawwords[i].text)
-
-            prev_word = word
-        return result
+                wordtuples_so_far.append(self.wordtuples[i])
+        return result, tuple_result
