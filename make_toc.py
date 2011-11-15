@@ -807,12 +807,12 @@ class TocCandidate(object):
                 result.append({'level':1,
                                'label':(' '.join(labelwords)).strip(),
                                'title':(' '.join(titlewords)).strip(), 'pagenum':word.strip(),
-                               'tocpage':self.page.index
+                               'tocpage':self.page.leafnum
                                })
                 tuple_result.append({'level':1,
                                      'title':wordtuples_so_far,
                                      'pagenum':word.strip(), # self.wordtuples[i]
-                                     'tocpage':self.page.index
+                                     'tocpage':self.page.leafnum
                                      })
                 words_so_far = []
                 wordtuples_so_far = []
