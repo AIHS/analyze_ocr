@@ -203,6 +203,7 @@ class abspage(object):
         self.page = page
         self.scandata = page_scandata
         self.info = {}
+        self.leafnum = self.scandata.get('leafNum')
     def get_drawable(self, scale=2, reduce=2, savedir='.'):
         return drawablepage(self, scale, reduce, savedir)
     def draw_basics(self, drawable):
@@ -229,8 +230,7 @@ class drawablepage(object):
         requested_size = (orig_width / scale, orig_height / scale)
         image = Image.new('RGB', requested_size)
 
-        self.leafnum = page.scandata.get('leafNum')
-        image_str = page.book.get_page_image(self.leafnum, requested_size,
+        image_str = page.book.get_page_image(self.page.leafnum, requested_size,
                                         out_img_type='ppm',
                                         kdu_reduce=reduce)
         page_image = None
@@ -255,7 +255,7 @@ class drawablepage(object):
         f = font.get_font(face, self.page.book.dpi / self.scale,size)
         self.draw.text(coord, text, font=f) # fill=color.yellow
     def save(self):
-        filename = self.namefmt % self.page.scandata.get('leafNum').zfill(3)
+        filename = self.namefmt % self.page.leafnum.zfill(3)
         self.image.save(os.path.join(self.savedir, filename))
 
 
