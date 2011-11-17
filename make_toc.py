@@ -81,7 +81,7 @@ def simple_make_toc(iabook, pages):
         all_pageno_cands_f = extract_sorted(all_pageno_cands)
 
     for i, tc in enumerate(tcs):
-        toc_els, tuple_toc_els = tc.get_qdtoc(all_pageno_cands_f)
+        toc_els, tuple_toc_els = tc.get_qdtoc(all_pageno_cands_f, iabook)
         result['qdtoc'] += toc_els
         result['qdtoc_tuples'] = tuple_toc_els
     result['qdtoc'] = cleanup_toc(result['qdtoc'])
@@ -776,7 +776,7 @@ class TocCandidate(object):
         self.lookaside[word] = word
         return word
 
-    def get_qdtoc(self, all_pageno_cands):
+    def get_qdtoc(self, all_pageno_cands, iabook):
         # pobj = abbyypage(page)
         valid_pages = {}
         for c in all_pageno_cands:
@@ -804,15 +804,29 @@ class TocCandidate(object):
                     continue
             if i in valid_pages:
                 labelwords, titlewords = guess_label(words_so_far)
+                ws = word.strip()
+
+                pageindex = None
+                pageleaf = None
+                if ws in iabook.pageno_to_index_x_leafno:
+                    pageindex, pageleaf = iabook.pageno_to_index_x_leafno[ws]
+
                 result.append({'level':1,
                                'label':(' '.join(labelwords)).strip(),
-                               'title':(' '.join(titlewords)).strip(), 'pagenum':word.strip(),
-                               'tocpage':self.page.leafnum
+                               'title':(' '.join(titlewords)).strip(),
+                               'pagenum':ws,
+                               'pageindex':pageindex,
+                               'pageleaf':pageleaf,
+                               'tocpage':self.page.index, # call it tocindex?
+                               'tocleaf':self.page.leafnum,
                                })
                 tuple_result.append({'level':1,
                                      'title':wordtuples_so_far,
-                                     'pagenum':word.strip(), # self.wordtuples[i]
-                                     'tocpage':self.page.leafnum
+                                     'pagenum':ws, # self.wordtuples[i]
+                                     'pageindex':pageindex,
+                                     'pageleaf':pageleaf,
+                                     'tocpage':self.page.index,
+                                     'tocleaf':self.page.leafnum,
                                      })
                 words_so_far = []
                 wordtuples_so_far = []

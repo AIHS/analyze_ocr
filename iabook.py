@@ -50,6 +50,13 @@ class Book(object):
         else:
             self.dpi = 300
 
+        # array of logical number x leaf number, by accessible index
+        self.page_mappings = self.get_scandata_page_mappings()
+        self.pageno_to_index_x_leafno = {}
+        for i, (pageno, leafno) in enumerate(self.page_mappings):
+            if pageno is not None:
+                self.pageno_to_index_x_leafno[pageno] = (i, leafno)
+
 
     def get_scandata_ns(self):
         scandata = self.get_scandata()
@@ -100,11 +107,17 @@ class Book(object):
         raise 'No djvu.xml file found'
 
 
+    # 'djvu' in this context means 'accessible'
     def get_scandata_pages_djvu(self):
         for page in self.scandata.findall('.//' + self.scandata_ns + 'page'):
             add = page.find(self.scandata_ns + 'addToAccessFormats')
             if add is not None and add.text == 'true':
                 yield page
+
+
+    def get_scandata_page_mappings(self):
+        return [(p.findtext(self.scandata_ns + 'pageNumber'), p.get('leafNum'))
+                for p in self.get_scandata_pages_djvu()]
 
 
     def get_scandata_pages(self):
