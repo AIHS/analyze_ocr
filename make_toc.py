@@ -817,7 +817,7 @@ class TocCandidate(object):
                                'pagenum':ws,
                                'pageindex':pageindex,
                                'pageleaf':pageleaf,
-                               'tocpage':self.page.index, # call it tocindex?
+                               'tocindex':self.page.index,
                                'tocleaf':self.page.leafnum,
                                })
                 tuple_result.append({'level':1,
@@ -825,7 +825,7 @@ class TocCandidate(object):
                                      'pagenum':ws, # self.wordtuples[i]
                                      'pageindex':pageindex,
                                      'pageleaf':pageleaf,
-                                     'tocpage':self.page.index,
+                                     'tocindex':self.page.index,
                                      'tocleaf':self.page.leafnum,
                                      })
                 words_so_far = []
