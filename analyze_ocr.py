@@ -24,6 +24,10 @@ def main(argv):
     parser = optparse.OptionParser(usage='usage: %prog [options]',
                                    version='%prog 0.1',
                                    description='make tocs')
+    parser.add_option('--in_deriver',
+                      action='store_true',
+                      default=False,
+                      help='match deriver-style args')
     parser.add_option('--simpletoc',
                       action='store_true',
                       default=False,
@@ -35,18 +39,22 @@ def main(argv):
     global opts
     opts, args = parser.parse_args(argv)
 
-    doc = ''
-    callback = None
-    if len(args) == 4:
-        (item_id, doc, path, callback) = args
-    elif len(args) == 3:
-        (item_id, doc, path) = args
+    if opts.in_deriver:
+        (dvju_xml_path, scandata_path) = args
+        import pdb; pdb.set_trace()
+        iabook = DeriverBook(dvju_xml_path, scandata_path)
     else:
-        (book_id,) = args
-        path = book_id
-
-    book_id = args[0]
-    iabook = Book(book_id, doc, path)
+        doc = ''
+        callback = None
+        if len(args) == 4:
+            (item_id, doc, path, callback) = args
+        elif len(args) == 3:
+            (item_id, doc, path) = args
+        else:
+            (book_id,) = args
+            path = book_id
+        book_id = args[0]
+        iabook = Book(book_id, doc, path)
     global scandata_ns
     scandata_ns = iabook.get_scandata_ns()
     if djvu:

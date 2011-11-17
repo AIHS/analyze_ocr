@@ -14,6 +14,7 @@ from collections import namedtuple
 
 
 ns="{http://www.abbyy.com/FineReader_xml/FineReader6-schema-v1.xml}"
+
 class Book(object):
     def __init__(self, book_id, doc, book_path):
         self.book_id = book_id
@@ -23,8 +24,6 @@ class Book(object):
         self.book_path = book_path
         if not os.path.exists(book_path):
             raise Exception('Can\'t find book path "' + book_path + '"')
-        self.scandata = self.get_scandata()
-        self.scandata_ns = self.get_scandata_ns()
 
         self.imgstack_archive_fmt = None
         self.imgstack_image_fmt = None
@@ -43,6 +42,13 @@ class Book(object):
                 break
         if self.imgstack_archive_fmt is None:
             raise Exception('Can\'t find book images')
+        self.scandata = None
+        self.computed_inits()
+
+
+    def computed_inits(self):
+        self.scandata = self.get_scandata()
+        self.scandata_ns = self.get_scandata_ns()
 
         dpi = self.scandata.findtext('.//%sdpi' % self.scandata_ns)
         if dpi is not None and len(dpi) > 0:
@@ -68,6 +74,8 @@ class Book(object):
 
 
     def get_scandata(self):
+        if self.scandata is not None:
+            return self.scandata
         result = None
         for f in (os.path.join(self.book_path, self.doc + '_scandata.xml'),
                   os.path.join(self.book_path, 'scandata.xml')):
@@ -190,6 +198,32 @@ class Book(object):
                               quality, region,
                               in_img_type, out_img_type,
                               kdu_reduce)
+
+
+class DeriverBook(Book):
+    def __init__(self, djvu_xml_path, scandata_path):
+        self.djvu_xml_path = djvu_xml_path
+        self.scandata_path = scandata_path
+        self.scandata = None
+        self.computed_inits()
+
+
+    def get_scandata(self):
+        if self.scandata is not None:
+            return self.scandata
+        if os.path.exists(self.scandata_path):
+            result = etree.parse(self.scandata_path)
+        else:
+            raise Exception('No scandata found')
+        return result
+
+
+    def get_djvu_xml(self):
+        print self.djvu_xml_path
+        if os.path.exists(self.djvu_xml_path):
+            return open(self.djvu_xml_path, 'r')
+        raise 'No djvu.xml file found'
+
 
 
 class Coord(namedtuple('Coord', 'x y')):
