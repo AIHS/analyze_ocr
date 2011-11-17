@@ -41,7 +41,6 @@ def main(argv):
 
     if opts.in_deriver:
         (dvju_xml_path, scandata_path) = args
-        import pdb; pdb.set_trace()
         iabook = DeriverBook(dvju_xml_path, scandata_path)
     else:
         doc = ''
