@@ -17,6 +17,7 @@ ns="{http://www.abbyy.com/FineReader_xml/FineReader6-schema-v1.xml}"
 
 class Book(object):
     def __init__(self, book_id, doc, book_path):
+        self.levels = ('part', 'chapter', 'subchapter', 'subsubchapter')
         self.book_id = book_id
         self.doc = doc
         if len(self.doc) == 0:
@@ -43,10 +44,10 @@ class Book(object):
         if self.imgstack_archive_fmt is None:
             raise Exception('Can\'t find book images')
         self.scandata = None
-        self.computed_inits()
+        self.common_computed_inits()
 
-
-    def computed_inits(self):
+    # shared init code between varieties of Book
+    def common_computed_inits(self):
         self.scandata = self.get_scandata()
         self.scandata_ns = self.get_scandata_ns()
 
@@ -62,6 +63,9 @@ class Book(object):
         for i, (pageno, leafno) in enumerate(self.page_mappings):
             if pageno is not None:
                 self.pageno_to_index_x_leafno[pageno] = (i, leafno)
+
+        (self.marked_chapters_by_index,
+         self.marked_chapters_by_name) = self.get_marked_chapters()
 
 
     def get_scandata_ns(self):
@@ -91,6 +95,23 @@ class Book(object):
             z.close()
             result = etree.parse(StringIO(scandata_str))
         return result
+
+
+    # some books have chapter markers - exploit these where available!
+    def get_marked_chapters(self):
+        by_index = {}
+        by_name = {}
+        for i, sd_page in enumerate(self.get_scandata_pages()):
+            pagetype = sd_page.find('.//%spageType' % (self.scandata_ns))
+            text = pagetype.text.lower()
+            if text in self.levels:
+                level = self.levels.index(text)
+                by_index[i] = level
+                pagename =  sd_page.findtext('.//%spageNumber'
+                                             % (self.scandata_ns))
+                if pagename is not None:
+                    by_name[pagename] = level
+        return by_index, by_name
 
 
     def get_abbyy(self):

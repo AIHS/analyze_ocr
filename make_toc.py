@@ -811,7 +811,14 @@ class TocCandidate(object):
                 if ws in iabook.pageno_to_index_x_leafno:
                     pageindex, pageleaf = iabook.pageno_to_index_x_leafno[ws]
 
-                result.append({'level':1,
+                level = iabook.marked_chapters_by_index.get(pageindex)
+                if level is None:
+                    print >> sys.stderr, 'no marker found'
+                    level = iabook.levels.index('chapter')
+                else:
+                    print >> sys.stderr, 'marker found'
+
+                result.append({'level':level,
                                'label':(' '.join(labelwords)).strip(),
                                'title':(' '.join(titlewords)).strip(),
                                'pagenum':ws,
@@ -820,7 +827,7 @@ class TocCandidate(object):
                                'tocindex':self.page.index,
                                'tocleaf':self.page.leafnum,
                                })
-                tuple_result.append({'level':1,
+                tuple_result.append({'level':level,
                                      'title':wordtuples_so_far,
                                      'pagenum':ws, # self.wordtuples[i]
                                      'pageindex':pageindex,
