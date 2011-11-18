@@ -51,7 +51,7 @@ def main(argv):
             (item_id, doc, path) = args
         else:
             (book_id,) = args
-            path = book_id
+            doc = path = book_id
         book_id = args[0]
         iabook = Book(book_id, doc, path)
     global scandata_ns
