@@ -6,13 +6,7 @@ def make_xml(toc):
     toc_el = etree.SubElement(top_el, 'toc')
     for toc_entry in toc:
         entry_el = etree.SubElement(toc_el, 'entry')
-
-        tocpage_el = etree.SubElement(entry_el, 'tocpage')
-        page_el = etree.SubElement(tocpage_el, 'page')
-        if toc_entry.get('tocleaf'):
-            etree.SubElement(page_el, 'leaf').text = toc_entry['tocleaf']
-        if toc_entry.get('tocindex'):
-            etree.SubElement(page_el, 'index').text = str(toc_entry['tocindex'])
+        etree.SubElement(entry_el, 'level').text = str(toc_entry['level'])
 
         refpage_el = etree.SubElement(entry_el, 'refpage')
         page_el = etree.SubElement(refpage_el, 'page')
@@ -26,5 +20,12 @@ def make_xml(toc):
             word_el = etree.SubElement(title_el, 'word')
             etree.SubElement(word_el, 'text').text = title_word.text
             etree.SubElement(word_el, 'box').text = title_word.box.tostring()
+
+        tocpage_el = etree.SubElement(entry_el, 'tocpage')
+        page_el = etree.SubElement(tocpage_el, 'page')
+        if toc_entry.get('tocleaf'):
+            etree.SubElement(page_el, 'leaf').text = toc_entry['tocleaf']
+        if toc_entry.get('tocindex'):
+            etree.SubElement(page_el, 'index').text = str(toc_entry['tocindex'])
     return top_el
         
