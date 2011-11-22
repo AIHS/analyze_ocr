@@ -262,7 +262,7 @@ class Box(namedtuple('Box', 'l b r t')):
     #     return (float(self.l) + (float(self.r) - float(self.l)) / 2,
     #             float(self.t) - (float(self.b) - float(self.t)) / 2)
 
-Word = namedtuple('Word', 'text box index')
+Word = namedtuple('Word', 'text rawtext box index')
 Line = namedtuple('Line', 'lineno get_words')
 class abspage(object):
     def __init__(self, i, book, page, page_scandata):
@@ -337,13 +337,14 @@ class djvupage(abspage):
                 index += 1
                 text = word.text
                 text = re.sub(r'[\s.:,\(\)\/;!\'\"\-]', '', text)
-                text.strip()
+                text = text.strip()
                 if True or len(text) > 0:
                     l, b, r, t = word.get('coords').split(',')[:4]
                     # yield Word(text.encode('utf-8', 'ignore'),
                     #            Box(int(l), int(b), int(r), int(t)),
                     #            index)
                     yield Word(text.lower().encode('ascii', 'ignore'),
+                               word.text,
                                Box(int(l), int(b), int(r), int(t)),
                                index)
     def get_words_raw(self):
@@ -360,6 +361,7 @@ class djvupage(abspage):
                 if True or len(text) > 0:
                     l, b, r, t = word.get('coords').split(',')[:4]
                     yield Word(text.encode('utf-8', 'ignore'),
+                               text,
                                Box(int(l), int(b), int(r), int(t)),
                                index)
     def get_lines(self):

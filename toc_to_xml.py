@@ -5,7 +5,7 @@ def make_xml(toc, version, brief=False):
     etree.SubElement(top_el, 'version').text = str(version)
     toc_el = etree.SubElement(top_el, 'toc')
     for toc_entry in toc:
-        words = ' '.join((word.text for word in toc_entry['title']))
+        words = ' '.join((word.rawtext for word in toc_entry['title']))
         toc_el.append(etree.Comment(' %s: %s -- %s ' %
                                     (toc_entry.get('tocindex'),
                                      words,
@@ -25,7 +25,7 @@ def make_xml(toc, version, brief=False):
         title_el = etree.SubElement(entry_el, 'title')
         for title_word in toc_entry['title']:
             word_el = etree.SubElement(title_el, 'word')
-            etree.SubElement(word_el, 'text').text = title_word.text
+            etree.SubElement(word_el, 'text').text = title_word.rawtext
             etree.SubElement(word_el, 'box').text = title_word.box.tostring()
 
         tocpage_el = etree.SubElement(entry_el, 'tocpage')
