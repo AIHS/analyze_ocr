@@ -17,7 +17,6 @@ ns="{http://www.abbyy.com/FineReader_xml/FineReader6-schema-v1.xml}"
 
 class Book(object):
     def __init__(self, book_id, doc, book_path):
-        self.levels = ('part', 'chapter', 'subchapter', 'subsubchapter')
         self.book_id = book_id
         self.doc = doc
         if len(self.doc) == 0:
@@ -48,6 +47,8 @@ class Book(object):
 
     # shared init code between varieties of Book
     def common_computed_inits(self):
+        self.levels = ('part', 'chapter', 'subchapter', 'subsubchapter')
+
         self.scandata = self.get_scandata()
         self.scandata_ns = self.get_scandata_ns()
 
@@ -226,7 +227,7 @@ class DeriverBook(Book):
         self.djvu_xml_path = djvu_xml_path
         self.scandata_path = scandata_path
         self.scandata = None
-        self.computed_inits()
+        self.common_computed_inits()
 
 
     def get_scandata(self):
@@ -240,7 +241,6 @@ class DeriverBook(Book):
 
 
     def get_djvu_xml(self):
-        print self.djvu_xml_path
         if os.path.exists(self.djvu_xml_path):
             return open(self.djvu_xml_path, 'r')
         raise 'No djvu.xml file found'
