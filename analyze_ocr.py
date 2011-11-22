@@ -76,7 +76,7 @@ def main(argv):
 
     if opts.simpletoc:
         xml = toc_to_xml.make_xml(toc_result['qdtoc_tuples'])
-        print etree.tostring(xml, pretty_print=True)
+        print etree.tostring(xml, pretty_print=True), # pretty_print adds nl
     elif opts.human:
         for r in ('readable', 'comments', 'isok'):
             print r + ':'
