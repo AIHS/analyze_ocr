@@ -82,7 +82,7 @@ def simple_make_toc(iabook, pages):
     for i, tc in enumerate(tcs):
         toc_els, tuple_toc_els = tc.get_qdtoc(all_pageno_cands_f, iabook)
         result['qdtoc'] += toc_els
-        result['qdtoc_tuples'] = tuple_toc_els
+        result['qdtoc_tuples'] += tuple_toc_els
     result['qdtoc'] = cleanup_toc(result['qdtoc'])
     return result
 
