@@ -18,6 +18,8 @@ djvu = True
 pagenos = False
 hfs = False
 
+version = 1
+
 scandata_ns = ''
 def main(argv):
     import optparse
@@ -75,7 +77,7 @@ def main(argv):
     # toc_result['readable'] = print_readable(toc_result['qdtoc'])
 
     if opts.simpletoc:
-        xml = toc_to_xml.make_xml(toc_result['qdtoc_tuples'])
+        xml = toc_to_xml.make_xml(toc_result['qdtoc_tuples'], version)
         print etree.tostring(xml, pretty_print=True), # pretty_print adds nl
     elif opts.human:
         for r in ('readable', 'comments', 'isok'):

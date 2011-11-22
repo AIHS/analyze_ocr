@@ -1,11 +1,18 @@
 from lxml import etree
 
-def make_xml(toc):
+def make_xml(toc, version, brief=False):
     top_el = etree.Element('ocr_analysis')
-    doc = etree.ElementTree(top_el)
+    etree.SubElement(top_el, 'version').text = str(version)
     toc_el = etree.SubElement(top_el, 'toc')
     for toc_entry in toc:
+        words = ' '.join((word.text for word in toc_entry['title']))
+        toc_el.append(etree.Comment(' %s: %s -- %s ' %
+                                    (toc_entry.get('tocindex'),
+                                     words,
+                                     toc_entry['pagenum'])))
+    for toc_entry in toc:
         entry_el = etree.SubElement(toc_el, 'entry')
+
         etree.SubElement(entry_el, 'level').text = str(toc_entry['level'])
 
         refpage_el = etree.SubElement(entry_el, 'refpage')
