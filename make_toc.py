@@ -56,7 +56,6 @@ def simple_make_toc(iabook, pages):
         result['has_contents'] = False
     if not iabook.has_pagenos():
         result['has_pagenos'] = False
-        print contentscount
     tcs = []
     for page in pages:
         if page.info['type'] == 'contents':
@@ -813,10 +812,11 @@ class TocCandidate(object):
 
                 level = iabook.marked_chapters_by_index.get(pageindex)
                 if level is None:
-                    print >> sys.stderr, 'no marker found'
+#                     print >> sys.stderr, 'no marker found'
                     level = iabook.levels.index('chapter')
                 else:
-                    print >> sys.stderr, 'marker found'
+                    pass
+#                     print >> sys.stderr, 'marker found'
 
                 result.append({'level':level,
                                'label':(' '.join(labelwords)).strip(),
