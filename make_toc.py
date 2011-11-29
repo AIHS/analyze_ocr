@@ -61,6 +61,8 @@ def simple_make_toc(iabook, pages):
         if page.info['type'] == 'contents':
             tcs.append(TocCandidate(page))
             tcs[-1].score = 50
+            if len(tcs) == contentscount:
+                break
 
     # (for qdtoc algorithm)
     # Go through all tc candidates
