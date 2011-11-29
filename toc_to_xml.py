@@ -1,4 +1,5 @@
 from lxml import etree
+import re
 
 def make_xml(toc, version, brief=False):
     top_el = etree.Element('ocr_analysis')
@@ -6,7 +7,8 @@ def make_xml(toc, version, brief=False):
     toc_el = etree.SubElement(top_el, 'toc')
     for toc_entry in toc:
         words = ' '.join((word.rawtext for word in toc_entry['title']))
-        toc_el.append(etree.Comment(' %s: %s -- %s ' %
+        words = re.sub(r'-+', '-', words) # -- is illegal in xml comments
+        toc_el.append(etree.Comment(' %s: %s - %s ' %
                                     (toc_entry.get('tocindex'),
                                      words,
                                      toc_entry['pagenum'])))
