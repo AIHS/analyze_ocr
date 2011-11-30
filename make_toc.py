@@ -54,6 +54,7 @@ def simple_make_toc(iabook, pages):
     contentscount = iabook.get_contents_count()
     if contentscount == 0:
         result['has_contents'] = False
+        return result
     if not iabook.has_pagenos():
         result['has_pagenos'] = False
     tcs = []
@@ -81,11 +82,11 @@ def simple_make_toc(iabook, pages):
     if len(all_pageno_cands) > 0:
         all_pageno_cands_f = extract_sorted(all_pageno_cands)
 
-    for i, tc in enumerate(tcs):
-        toc_els, tuple_toc_els = tc.get_qdtoc(all_pageno_cands_f, iabook)
-        result['qdtoc'] += toc_els
-        result['qdtoc_tuples'] += tuple_toc_els
-    result['qdtoc'] = cleanup_toc(result['qdtoc'])
+        for i, tc in enumerate(tcs):
+            toc_els, tuple_toc_els = tc.get_qdtoc(all_pageno_cands_f, iabook)
+            result['qdtoc'] += toc_els
+            result['qdtoc_tuples'] += tuple_toc_els
+        result['qdtoc'] = cleanup_toc(result['qdtoc'])
     return result
 
 
@@ -267,27 +268,26 @@ def make_toc(iabook, pages, contents_leafs=None, not_contents_leafs=None):
     if len(all_pageno_cands) > 0:
         all_pageno_cands_f = extract_sorted(all_pageno_cands)
 
-
-    # create qdtoc:
-    # loop through toc candidates and append qdtoc from each.
-    most_recent_toc = 0
-    for i, tc in enumerate(tcs):
-        l(result, '%s %s' % (tc.page.index, tc.score))
-        if tc.score > toc_threshold:
-            good_toc_count += 1
-            if good_toc_count >= max_allowed_toc_len:
-                failit(result, 'failed due to too many toc pages')
-                return result
-            if most_recent_toc != 0:
-                if i >= most_recent_toc + 2:
-                    failit(result, 'failed due to discontiguous tocs')
+        # create qdtoc:
+        # loop through toc candidates and append qdtoc from each.
+        most_recent_toc = 0
+        for i, tc in enumerate(tcs):
+            l(result, '%s %s' % (tc.page.index, tc.score))
+            if tc.score > toc_threshold:
+                good_toc_count += 1
+                if good_toc_count >= max_allowed_toc_len:
+                    failit(result, 'failed due to too many toc pages')
                     return result
-                most_recent_toc = i
-            toc_els, tuple_toc_els = tc.get_qdtoc(all_pageno_cands_f)
-            result['qdtoc'] += toc_els
+                if most_recent_toc != 0:
+                    if i >= most_recent_toc + 2:
+                        failit(result, 'failed due to discontiguous tocs')
+                        return result
+                    most_recent_toc = i
+                toc_els, tuple_toc_els = tc.get_qdtoc(all_pageno_cands_f)
+                result['qdtoc'] += toc_els
 
-    result['qdtoc'] = cleanup_toc(result['qdtoc'])
-    check_toc(result)
+        result['qdtoc'] = cleanup_toc(result['qdtoc'])
+        check_toc(result)
     return result
 
 
